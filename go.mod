@@ -1,10 +1,9 @@
-module github.com/minio/madmin-go/v2
+module github.com/ZeroLuKa/trinet-oss-admin-go
 
 go 1.17
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2
-	github.com/google/uuid v1.3.0
 	github.com/minio/minio-go/v7 v7.0.41
 	github.com/prometheus/procfs v0.8.0
 	github.com/secure-io/sio-go v0.3.1
