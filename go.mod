@@ -1,4 +1,4 @@
-module github.com/trinet2005/oss-admin-sdk
+module github.com/trinet2005/oss-admin-go
 
 go 1.17
 
