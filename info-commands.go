@@ -455,3 +455,96 @@ func (adm *AdminClient) ServerInfo(ctx context.Context) (InfoMessage, error) {
 
 	return message, nil
 }
+
+/* trinet */
+
+type SetDiskInfo struct {
+	Endpoint       string `json:"endpoint"`
+	RootDisk       bool   `json:"rootDisk"`
+	DrivePath      string `json:"path"`
+	Healing        bool   `json:"healing"`
+	State          string `json:"state"`
+	UUID           string `json:"uuid"`
+	TotalSpace     uint64 `json:"totalspace"`
+	UsedSpace      uint64 `json:"usedspace"`
+	AvailableSpace uint64 `json:"availspace"`
+
+	// Indexes, will be -1 until assigned a set.
+	PoolIndex int `json:"pool_index"`
+	SetIndex  int `json:"set_index"`
+	DiskIndex int `json:"disk_index"`
+}
+
+type SetInfo struct {
+	Index      int    `json:"setIndex"`
+	Status     string `json:"setStatus"`
+	errDiskCnt uint64
+	Member     map[int]*SetDiskInfo `json:"member"`
+}
+
+type PoolInfo struct {
+	Index        int              `json:"poolIndex"`
+	Status       string           `json:"status"`
+	DrivesPerSet int              `json:"drivesPerSet"`
+	Parity       int              `json:"parity"`
+	Sets         map[int]*SetInfo `json:"setsInfo"`
+	UsedSpace    uint64           `json:"usedSpace"`
+	TotalSpace   uint64           `json:"totalSpace"`
+}
+
+type OSSClusterInfo struct {
+	Pools map[int]*PoolInfo `json:"poolsInfo"`
+}
+
+// GetClusterInfo - returns minio cluster Info
+func (adm *AdminClient) GetClusterInfo(ctx context.Context) (OSSClusterInfo, error) {
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/clusterinfo"})
+	defer closeResponse(resp)
+	if err != nil {
+		return OSSClusterInfo{}, err
+	}
+
+	// Check response http status code
+	if resp.StatusCode != http.StatusOK {
+		return OSSClusterInfo{}, httpRespToErrorResponse(resp)
+	}
+
+	// Unmarshal the server's json response
+	var clusterInfo OSSClusterInfo
+	if err = json.NewDecoder(resp.Body).Decode(&clusterInfo); err != nil {
+		return OSSClusterInfo{}, err
+	}
+
+	return clusterInfo, nil
+}
+
+type BucketInfoForVcs struct {
+	Name         string `json:"name"`
+	Size         uint64 `json:"size"`
+	ObjectsCount uint64 `json:"objectsCount"`
+}
+
+// GetBucketInfo - returns minio bucket Info
+func (adm *AdminClient) GetBucketInfo(ctx context.Context) (map[string]BucketInfoForVcs, error) {
+	bucketInfo := make(map[string]BucketInfoForVcs, 0)
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/bucketinfo"})
+	defer closeResponse(resp)
+	if err != nil {
+		return bucketInfo, err
+	}
+
+	// Check response http status code
+	if resp.StatusCode != http.StatusOK {
+		return bucketInfo, httpRespToErrorResponse(resp)
+	}
+
+	// Unmarshal the server's json response
+	if err = json.NewDecoder(resp.Body).Decode(&bucketInfo); err != nil {
+		return bucketInfo, err
+	}
+
+	return bucketInfo, nil
+}
+
+/* trinet */
