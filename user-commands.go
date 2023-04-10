@@ -27,7 +27,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/minio/minio-go/v7/pkg/tags"
+	"github.com/trinet2005/oss-admin-go/pkg/tags"
 )
 
 // AccountAccess contains information about

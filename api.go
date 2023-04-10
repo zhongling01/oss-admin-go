@@ -40,9 +40,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/minio/minio-go/v7/pkg/s3utils"
-	"github.com/minio/minio-go/v7/pkg/signer"
+	"github.com/trinet2005/oss-admin-go/pkg/credentials"
+	"github.com/trinet2005/oss-admin-go/pkg/s3utils"
+	"github.com/trinet2005/oss-admin-go/pkg/signer"
 	"golang.org/x/net/publicsuffix"
 )
 
