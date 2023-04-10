@@ -25,7 +25,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/minio/minio-go/v7/pkg/set"
+	"github.com/trinet2005/oss-admin-go/pkg/set"
 )
 
 // Top level configuration key constants.

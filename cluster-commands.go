@@ -28,7 +28,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/minio/minio-go/v7/pkg/replication"
+	"github.com/trinet2005/oss-admin-go/pkg/replication"
 )
 
 // SiteReplAPIVersion holds the supported version of the server Replication API
