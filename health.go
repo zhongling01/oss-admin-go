@@ -33,14 +33,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/madmin-go/v2/cgroup"
-	"github.com/minio/madmin-go/v2/kernel"
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
+	"github.com/trinet2005/oss-admin-go/cgroup"
+	"github.com/trinet2005/oss-admin-go/kernel"
 )
 
 const (
@@ -140,8 +140,25 @@ type CPU struct {
 type CPUs struct {
 	NodeCommon
 
-	CPUs          []CPU `json:"cpus,omitempty"`
-	IsFreqGovPerf *bool `json:"is_freq_gov_perf,omitempty"`
+	CPUs         []CPU          `json:"cpus,omitempty"`
+	CPUFreqStats []CPUFreqStats `json:"freq_stats,omitempty"`
+}
+
+// CPUFreqStats CPU frequency stats
+type CPUFreqStats struct {
+	Name                     string
+	CpuinfoCurrentFrequency  *uint64
+	CpuinfoMinimumFrequency  *uint64
+	CpuinfoMaximumFrequency  *uint64
+	CpuinfoTransitionLatency *uint64
+	ScalingCurrentFrequency  *uint64
+	ScalingMinimumFrequency  *uint64
+	ScalingMaximumFrequency  *uint64
+	AvailableGovernors       string
+	Driver                   string
+	Governor                 string
+	RelatedCpus              string
+	SetSpeed                 string
 }
 
 // GetCPUs returns system's all CPU information.
@@ -184,16 +201,16 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		cpus = append(cpus, cpu)
 	}
 
-	var igp *bool
-	isGovPerf, err := isFreqGovPerf()
-	if err == nil {
-		igp = &isGovPerf
+	var errMsg string
+	freqStats, err := getCPUFreqStats()
+	if err != nil {
+		errMsg = err.Error()
 	}
 
 	return CPUs{
-		NodeCommon:    NodeCommon{Addr: addr},
-		CPUs:          cpus,
-		IsFreqGovPerf: igp,
+		NodeCommon:   NodeCommon{Addr: addr, Error: errMsg},
+		CPUs:         cpus,
+		CPUFreqStats: freqStats,
 	}
 }
 
@@ -330,7 +347,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 
 // GetSysConfig returns config values from the system
 // (only those affecting minio performance)
-func GetSysConfig(ctx context.Context, addr string) SysConfig {
+func GetSysConfig(_ context.Context, addr string) SysConfig {
 	sc := SysConfig{
 		NodeCommon: NodeCommon{Addr: addr},
 		Config:     map[string]interface{}{},
@@ -356,7 +373,7 @@ func GetSysConfig(ctx context.Context, addr string) SysConfig {
 }
 
 // GetSysServices returns info of sys services that affect minio
-func GetSysServices(ctx context.Context, addr string) SysServices {
+func GetSysServices(_ context.Context, addr string) SysServices {
 	ss := SysServices{
 		NodeCommon: NodeCommon{Addr: addr},
 		Services:   []SysService{},
@@ -397,7 +414,7 @@ func getSELinuxInfo() (SysService, error) {
 }
 
 // GetSysErrors returns issues in system setup/config
-func GetSysErrors(ctx context.Context, addr string) SysErrors {
+func GetSysErrors(_ context.Context, addr string) SysErrors {
 	se := SysErrors{NodeCommon: NodeCommon{Addr: addr}}
 	if runtime.GOOS != "linux" {
 		return se

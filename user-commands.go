@@ -27,7 +27,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/trinet2005/oss-admin-go/pkg/tags"
+	"github.com/trinet2005/oss-go-sdk/pkg/tags"
 )
 
 // AccountAccess contains information about
@@ -50,14 +50,15 @@ type BucketDetails struct {
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
 // access type for an account
 type BucketAccessInfo struct {
-	Name                 string            `json:"name"`
-	Size                 uint64            `json:"size"`
-	Objects              uint64            `json:"objects"`
-	ObjectSizesHistogram map[string]uint64 `json:"objectHistogram"`
-	Details              *BucketDetails    `json:"details"`
-	PrefixUsage          map[string]uint64 `json:"prefixUsage"`
-	Created              time.Time         `json:"created"`
-	Access               AccountAccess     `json:"access"`
+	Name                    string            `json:"name"`
+	Size                    uint64            `json:"size"`
+	Objects                 uint64            `json:"objects"`
+	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram"`
+	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
+	Details                 *BucketDetails    `json:"details"`
+	PrefixUsage             map[string]uint64 `json:"prefixUsage"`
+	Created                 time.Time         `json:"created"`
+	Access                  AccountAccess     `json:"access"`
 }
 
 // AccountInfo represents the account usage info of an
@@ -220,19 +221,20 @@ func (adm *AdminClient) GetUserInfo(ctx context.Context, name string) (u UserInf
 	return u, nil
 }
 
-// AddOrUpdateUserReq allows to update user details such as secret key and
-// account status.
+// AddOrUpdateUserReq allows to update
+//   - user details such as secret key
+//   - account status.
+//   - optionally a comma separated list of policies
+//     to be applied for the user.
 type AddOrUpdateUserReq struct {
 	SecretKey string        `json:"secretKey,omitempty"`
+	Policy    string        `json:"policy,omitempty"`
 	Status    AccountStatus `json:"status"`
 }
 
-// SetUser - update user secret key or account status.
-func (adm *AdminClient) SetUser(ctx context.Context, accessKey, secretKey string, status AccountStatus) error {
-	data, err := json.Marshal(AddOrUpdateUserReq{
-		SecretKey: secretKey,
-		Status:    status,
-	})
+// SetUserReq - update user secret key, account status or policies.
+func (adm *AdminClient) SetUserReq(ctx context.Context, accessKey string, req AddOrUpdateUserReq) error {
+	data, err := json.Marshal(req)
 	if err != nil {
 		return err
 	}
@@ -263,6 +265,14 @@ func (adm *AdminClient) SetUser(ctx context.Context, accessKey, secretKey string
 	}
 
 	return nil
+}
+
+// SetUser - update user secret key or account status.
+func (adm *AdminClient) SetUser(ctx context.Context, accessKey, secretKey string, status AccountStatus) error {
+	return adm.SetUserReq(ctx, accessKey, AddOrUpdateUserReq{
+		SecretKey: secretKey,
+		Status:    status,
+	})
 }
 
 // AddUser - adds a user.
@@ -302,6 +312,8 @@ type AddServiceAccountReq struct {
 	TargetUser string          `json:"targetUser,omitempty"`
 	AccessKey  string          `json:"accessKey,omitempty"`
 	SecretKey  string          `json:"secretKey,omitempty"`
+	Comment    string          `json:"comment,omitempty"`
+	Expiration *time.Time      `json:"expiration,omitempty"`
 }
 
 // AddServiceAccountResp is the response body of the add service account admin call
@@ -352,9 +364,11 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 
 // UpdateServiceAccountReq is the request options of the edit service account admin call
 type UpdateServiceAccountReq struct {
-	NewPolicy    json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
-	NewSecretKey string          `json:"newSecretKey,omitempty"`
-	NewStatus    string          `json:"newStatus,omitempty"`
+	NewPolicy     json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
+	NewSecretKey  string          `json:"newSecretKey,omitempty"`
+	NewStatus     string          `json:"newStatus,omitempty"`
+	NewComment    string          `json:"newComment,omitempty"`
+	NewExpiration *time.Time      `json:"newExpiration,omitempty"`
 }
 
 // UpdateServiceAccount - edit an existing service account
@@ -432,10 +446,12 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 
 // InfoServiceAccountResp is the response body of the info service account call
 type InfoServiceAccountResp struct {
-	ParentUser    string `json:"parentUser"`
-	AccountStatus string `json:"accountStatus"`
-	ImpliedPolicy bool   `json:"impliedPolicy"`
-	Policy        string `json:"policy"`
+	ParentUser    string     `json:"parentUser"`
+	AccountStatus string     `json:"accountStatus"`
+	ImpliedPolicy bool       `json:"impliedPolicy"`
+	Policy        string     `json:"policy"`
+	Comment       string     `json:"comment"`
+	Expiration    *time.Time `json:"expiration,omitempty"`
 }
 
 // InfoServiceAccount - returns the info of service account belonging to the specified user

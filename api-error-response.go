@@ -113,7 +113,7 @@ func httpRespToErrorResponse(resp *http.Response) error {
 //
 // For example:
 //
-//	import admin "github.com/minio/madmin-go/v2"
+//	import admin "github.com/trinet2005/oss-admin-go"
 //	...
 //	...
 //	ss, err := adm.ServiceStatus(...)

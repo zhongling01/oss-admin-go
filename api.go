@@ -40,9 +40,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/trinet2005/oss-admin-go/pkg/credentials"
-	"github.com/trinet2005/oss-admin-go/pkg/s3utils"
-	"github.com/trinet2005/oss-admin-go/pkg/signer"
+	"github.com/trinet2005/oss-go-sdk/pkg/credentials"
+	"github.com/trinet2005/oss-go-sdk/pkg/s3utils"
+	"github.com/trinet2005/oss-go-sdk/pkg/signer"
 	"golang.org/x/net/publicsuffix"
 )
 

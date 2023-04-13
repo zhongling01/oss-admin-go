@@ -104,9 +104,12 @@ type ServiceTraceOpts struct {
 	Decommission      bool
 	Healing           bool
 	BatchReplication  bool
+	BatchKeyRotation  bool
 	Rebalance         bool
 	ReplicationResync bool
 	Bootstrap         bool
+	FTP               bool
+	ILM               bool
 	OnlyErrors        bool
 	Threshold         time.Duration
 }
@@ -122,9 +125,12 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Decommission, TraceDecommission)
 	tt.SetIf(t.Healing, TraceHealing)
 	tt.SetIf(t.BatchReplication, TraceBatchReplication)
+	tt.SetIf(t.BatchKeyRotation, TraceBatchKeyRotation)
 	tt.SetIf(t.Rebalance, TraceRebalance)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
+	tt.SetIf(t.FTP, TraceFTP)
+	tt.SetIf(t.ILM, TraceILM)
 
 	return tt
 }
@@ -142,9 +148,12 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("decommission", strconv.FormatBool(t.Decommission))
 	u.Set("healing", strconv.FormatBool(t.Healing))
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
+	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchKeyRotation))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
+	u.Set("ftp", strconv.FormatBool(t.FTP))
+	u.Set("ilm", strconv.FormatBool(t.ILM))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -155,12 +164,15 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Decommission = r.Form.Get("decommission") == "true"
 	t.Healing = r.Form.Get("healing") == "true"
 	t.BatchReplication = r.Form.Get("batch-replication") == "true"
+	t.BatchKeyRotation = r.Form.Get("batch-keyrotation") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
 	t.ReplicationResync = r.Form.Get("replication-resync") == "true"
 	t.Bootstrap = r.Form.Get("bootstrap") == "true"
+	t.FTP = r.Form.Get("ftp") == "true"
+	t.ILM = r.Form.Get("ilm") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
