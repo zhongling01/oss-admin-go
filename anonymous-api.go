@@ -36,7 +36,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/trinet2005/oss-admin-go/pkg/s3utils"
+	"github.com/trinet2005/oss-go-sdk/pkg/s3utils"
 	"golang.org/x/net/publicsuffix"
 )
 

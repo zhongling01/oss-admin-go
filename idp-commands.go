@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trinet2005/oss-admin-go/pkg/set"
+	"github.com/trinet2005/oss-go-sdk/pkg/set"
 )
 
 // AddOrUpdateIDPConfig - creates a new or updates an existing IDP

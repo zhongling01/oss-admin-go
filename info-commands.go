@@ -149,9 +149,10 @@ type BucketUsageInfo struct {
 	ReplicationPendingCount uint64 `json:"objectsPendingReplicationCount"`
 	ReplicationFailedCount  uint64 `json:"objectsFailedReplicationCount"`
 
-	VersionsCount        uint64            `json:"versionsCount"`
-	ObjectsCount         uint64            `json:"objectsCount"`
-	ObjectSizesHistogram map[string]uint64 `json:"objectsSizesHistogram"`
+	VersionsCount           uint64            `json:"versionsCount"`
+	ObjectsCount            uint64            `json:"objectsCount"`
+	ObjectSizesHistogram    map[string]uint64 `json:"objectsSizesHistogram"`
+	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
 }
 
 // DataUsageInfo represents data usage stats of the underlying Object API
@@ -222,6 +223,17 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 	return dataUsageInfo, nil
 }
 
+// ErasureSetInfo provides information per erasure set
+type ErasureSetInfo struct {
+	ID            int    `json:"id"`
+	RawUsage      uint64 `json:"rawUsage"`
+	RawCapacity   uint64 `json:"rawCapacity"`
+	Usage         uint64 `json:"usage"`
+	ObjectsCount  uint64 `json:"objectsCount"`
+	VersionsCount uint64 `json:"versionsCount"`
+	HealDisks     int    `json:"healDisks"`
+}
+
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
 	Mode         string             `json:"mode,omitempty"`
@@ -236,6 +248,8 @@ type InfoMessage struct {
 	Services     Services           `json:"services,omitempty"`
 	Backend      interface{}        `json:"backend,omitempty"`
 	Servers      []ServerProperties `json:"servers,omitempty"`
+
+	Pools map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }
 
 func (info InfoMessage) BackendType() BackendType {
@@ -356,18 +370,18 @@ const (
 
 // FSBackend contains specific FS storage information
 type FSBackend struct {
-	Type backendType `json:"backendType,omitempty"`
+	Type backendType `json:"backendType"`
 }
 
 // ErasureBackend contains specific erasure storage information
 type ErasureBackend struct {
-	Type         backendType `json:"backendType,omitempty"`
-	OnlineDisks  int         `json:"onlineDisks,omitempty"`
-	OfflineDisks int         `json:"offlineDisks,omitempty"`
+	Type         backendType `json:"backendType"`
+	OnlineDisks  int         `json:"onlineDisks"`
+	OfflineDisks int         `json:"offlineDisks"`
 	// Parity disks for currently configured Standard storage class.
-	StandardSCParity int `json:"standardSCParity,omitempty"`
+	StandardSCParity int `json:"standardSCParity"`
 	// Parity disks for currently configured Reduced Redundancy storage class.
-	RRSCParity int `json:"rrSCParity,omitempty"`
+	RRSCParity int `json:"rrSCParity"`
 }
 
 // ServerProperties holds server information
@@ -422,6 +436,7 @@ type Disk struct {
 	Utilization     float64      `json:"utilization,omitempty"`
 	Metrics         *DiskMetrics `json:"metrics,omitempty"`
 	HealInfo        *HealingDisk `json:"heal_info,omitempty"`
+	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
 
 	// Indexes, will be -1 until assigned a set.

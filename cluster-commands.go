@@ -28,7 +28,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/trinet2005/oss-admin-go/pkg/replication"
+	"github.com/trinet2005/oss-go-sdk/pkg/replication"
 )
 
 // SiteReplAPIVersion holds the supported version of the server Replication API
@@ -151,7 +151,18 @@ type PeerInfo struct {
 	Name     string `json:"name"`
 	// Deployment ID is useful as it is immutable - though endpoint may
 	// change.
-	DeploymentID string `json:"deploymentID"`
+	DeploymentID string     `json:"deploymentID"`
+	SyncState    SyncStatus `json:"sync"` // whether to enable| disable synchronous replication
+}
+
+type SyncStatus string // change in sync state
+const (
+	SyncEnabled  SyncStatus = "enable"
+	SyncDisabled SyncStatus = "disable"
+)
+
+func (s SyncStatus) Empty() bool {
+	return s != SyncDisabled && s != SyncEnabled
 }
 
 // SRPeerJoin - used only by minio server to send SR join requests to peer
@@ -257,6 +268,8 @@ type SRSvcAccCreate struct {
 	Claims        map[string]interface{} `json:"claims"`
 	SessionPolicy json.RawMessage        `json:"sessionPolicy"`
 	Status        string                 `json:"status"`
+	Comment       string                 `json:"comment"`
+	Expiration    *time.Time             `json:"expiration,omitempty"`
 }
 
 // SRSvcAccUpdate - update operation
@@ -264,7 +277,9 @@ type SRSvcAccUpdate struct {
 	AccessKey     string          `json:"accessKey"`
 	SecretKey     string          `json:"secretKey"`
 	Status        string          `json:"status"`
+	Comment       string          `json:"comment"`
 	SessionPolicy json.RawMessage `json:"sessionPolicy"`
+	Expiration    *time.Time      `json:"expiration,omitempty"`
 }
 
 // SRSvcAccDelete - delete operation

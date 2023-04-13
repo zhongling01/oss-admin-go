@@ -47,12 +47,18 @@ const (
 	TraceHealing
 	// TraceBatchReplication will trace batch replication operations.
 	TraceBatchReplication
+	// TraceBatchKeyRotation will trace batch keyrotation operations.
+	TraceBatchKeyRotation
 	// TraceRebalance will trace rebalance operations
 	TraceRebalance
 	// TraceReplicationResync will trace replication resync operations.
 	TraceReplicationResync
 	// TraceBootstrap will trace events during MinIO cluster bootstrap
 	TraceBootstrap
+	// TraceFTP will trace events from MinIO FTP Server
+	TraceFTP
+	// TraceILM will trace events during MinIO ILM operations
+	TraceILM
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
@@ -104,10 +110,11 @@ type TraceInfo struct {
 	Path     string        `json:"path"`
 	Duration time.Duration `json:"dur"`
 
-	Message    string          `json:"msg,omitempty"`
-	Error      string          `json:"error,omitempty"`
-	HTTP       *TraceHTTPStats `json:"http,omitempty"`
-	HealResult *HealResultItem `json:"healResult,omitempty"`
+	Message    string            `json:"msg,omitempty"`
+	Error      string            `json:"error,omitempty"`
+	Custom     map[string]string `json:"custom,omitempty"`
+	HTTP       *TraceHTTPStats   `json:"http,omitempty"`
+	HealResult *HealResultItem   `json:"healResult,omitempty"`
 }
 
 // Mask returns the trace type as uint32.
