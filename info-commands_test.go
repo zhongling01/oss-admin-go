@@ -12,12 +12,27 @@ func TestAdminClient_GetClusterInfo(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	info, err := c.GetClusterInfo(context.Background())
+	info, err := c.GetClusterInfo(context.Background(), false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	for _, pool := range info.Pools {
 		t.Log(fmt.Sprintf("%+v", pool))
+	}
+
+	info, err = c.GetClusterInfo(context.Background(), true)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	for _, pool := range info.Pools {
+		for _, set := range pool.Sets {
+			t.Log(fmt.Sprintf("=== pool %d set %d ===", pool.Index, set.Index))
+			for _, member := range set.Member {
+				t.Log(fmt.Sprintf("%s", member.Endpoint))
+			}
+
+		}
+
 	}
 }
 
