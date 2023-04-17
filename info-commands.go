@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -512,8 +513,15 @@ type OSSClusterInfo struct {
 }
 
 // GetClusterInfo - returns minio cluster Info
-func (adm *AdminClient) GetClusterInfo(ctx context.Context) (OSSClusterInfo, error) {
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/clusterinfo"})
+func (adm *AdminClient) GetClusterInfo(ctx context.Context, verbose bool) (OSSClusterInfo, error) {
+	queryValues := make(url.Values)
+	if verbose {
+		queryValues.Set("verbose", "true")
+	}
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
+		relPath:     adminAPIPrefix + "/clusterinfo",
+		queryValues: queryValues,
+	})
 	defer closeResponse(resp)
 	if err != nil {
 		return OSSClusterInfo{}, err
