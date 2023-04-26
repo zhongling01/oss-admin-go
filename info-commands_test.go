@@ -50,3 +50,59 @@ func TestAdminClient_GetBucketInfo(t *testing.T) {
 		t.Log(fmt.Sprintf("%s: %+v", bucket, info))
 	}
 }
+
+func TestAdminClient_ServerInfo(t *testing.T) {
+	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	info, err := c.ServerInfo(context.Background())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	t.Log(fmt.Sprintf("%+v", info))
+}
+
+func TestAdminClient_DataUsageInfo(t *testing.T) {
+	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	info, err := c.DataUsageInfo(context.Background())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	t.Log(fmt.Sprintf("%+v", info))
+}
+
+func TestAdminClient_StorageInfo(t *testing.T) {
+	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	info, err := c.StorageInfo(context.Background())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	t.Log(fmt.Sprintf("%+v", info))
+}
+
+func TestAdminClient_AccountInfo(t *testing.T) {
+	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	info, err := c.AccountInfo(context.Background(), AccountOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	t.Log(fmt.Sprintf("%+v", info))
+}
