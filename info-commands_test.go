@@ -6,8 +6,16 @@ import (
 	"testing"
 )
 
+const (
+	EndpointDefault        = "127.0.0.1:" + PortDefault
+	PortDefault            = "19000"
+	AccessKeyIDDefault     = "minioadmin"
+	SecretAccessKeyDefault = "minioadmin"
+	RegionDefault          = "us-east-1"
+)
+
 func TestAdminClient_GetClusterInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -37,7 +45,7 @@ func TestAdminClient_GetClusterInfo(t *testing.T) {
 }
 
 func TestAdminClient_GetBucketInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -52,7 +60,7 @@ func TestAdminClient_GetBucketInfo(t *testing.T) {
 }
 
 func TestAdminClient_ServerInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -66,7 +74,7 @@ func TestAdminClient_ServerInfo(t *testing.T) {
 }
 
 func TestAdminClient_DataUsageInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -80,7 +88,7 @@ func TestAdminClient_DataUsageInfo(t *testing.T) {
 }
 
 func TestAdminClient_StorageInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -94,7 +102,7 @@ func TestAdminClient_StorageInfo(t *testing.T) {
 }
 
 func TestAdminClient_AccountInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

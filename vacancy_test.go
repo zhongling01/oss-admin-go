@@ -6,7 +6,7 @@ import (
 )
 
 func TestAdminClient_GetVacancyInfo(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -19,7 +19,7 @@ func TestAdminClient_GetVacancyInfo(t *testing.T) {
 }
 
 func TestAdminClient_SetVacancy(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -35,7 +35,7 @@ func TestAdminClient_SetVacancy(t *testing.T) {
 }
 
 func TestAdminClient_ManualMergeVacancy(t *testing.T) {
-	c, err := New("127.0.0.1:19000", "minioadmin", "minioadmin", false)
+	c, err := New(EndpointDefault, AccessKeyIDDefault, SecretAccessKeyDefault, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
