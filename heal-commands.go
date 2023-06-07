@@ -46,12 +46,13 @@ const (
 
 // HealOpts - collection of options for a heal sequence
 type HealOpts struct {
-	Recursive bool         `json:"recursive"`
-	DryRun    bool         `json:"dryRun"`
-	Remove    bool         `json:"remove"`
-	Recreate  bool         `json:"recreate"` // Rewrite all resources specified at the bucket or prefix.
-	ScanMode  HealScanMode `json:"scanMode"`
-	NoLock    bool         `json:"nolock"`
+	Recursive    bool         `json:"recursive"`
+	DryRun       bool         `json:"dryRun"`
+	Remove       bool         `json:"remove"`
+	Recreate     bool         `json:"recreate"` // Rewrite all resources specified at the bucket or prefix.
+	ScanMode     HealScanMode `json:"scanMode"`
+	UpdateParity bool         `json:"updateParity"` // Update the parity of the existing object with a new one
+	NoLock       bool         `json:"nolock"`
 }
 
 // Equal returns true if no is same as o.
@@ -68,6 +69,10 @@ func (o HealOpts) Equal(no HealOpts) bool {
 	if o.Recreate != no.Recreate {
 		return false
 	}
+	if o.UpdateParity != no.UpdateParity {
+		return false
+	}
+
 	return o.ScanMode == no.ScanMode
 }
 
@@ -306,11 +311,6 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 type MRFStatus struct {
 	BytesHealed uint64 `json:"bytes_healed"`
 	ItemsHealed uint64 `json:"items_healed"`
-
-	TotalItems uint64 `json:"total_items"`
-	TotalBytes uint64 `json:"total_bytes"`
-
-	Started time.Time `json:"started"`
 }
 
 // BgHealState represents the status of the background heal

@@ -247,7 +247,7 @@ type InfoMessage struct {
 	Versions     Versions           `json:"versions,omitempty"`
 	Usage        Usage              `json:"usage,omitempty"`
 	Services     Services           `json:"services,omitempty"`
-	Backend      interface{}        `json:"backend,omitempty"`
+	Backend      ErasureBackend     `json:"backend,omitempty"`
 	Servers      []ServerProperties `json:"servers,omitempty"`
 
 	Pools map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
@@ -255,41 +255,23 @@ type InfoMessage struct {
 
 func (info InfoMessage) BackendType() BackendType {
 	// MinIO server type default
-	backendType := Unknown
-
-	// Set the type of MinIO server ("FS", "Erasure", "Unknown")
-	switch v := info.Backend.(type) {
-	case FSBackend:
-		backendType = FS
-	case ErasureBackend:
-		backendType = Erasure
-	case map[string]interface{}:
-		vt, ok := v["backendType"]
-		if ok {
-			backendTypeS, _ := vt.(string)
-			switch backendTypeS {
-			case "Erasure":
-				backendType = Erasure
-			}
-		}
+	switch info.Backend.Type {
+	case "Erasure":
+		return Erasure
+	case "FS":
+		return FS
+	default:
+		return Unknown
 	}
-	return backendType
 }
 
 func (info InfoMessage) StandardParity() int {
 	switch info.BackendType() {
 	case Erasure:
-		switch v := info.Backend.(type) {
-		case ErasureBackend:
-			return v.StandardSCParity
-		case map[string]interface{}:
-			scParity, ok := v["standardSCParity"].(float64)
-			if ok {
-				return int(scParity)
-			}
-		}
+		return info.Backend.StandardSCParity
+	default:
+		return -1
 	}
-	return -1
 }
 
 // Services contains different services information
@@ -383,6 +365,10 @@ type ErasureBackend struct {
 	StandardSCParity int `json:"standardSCParity"`
 	// Parity disks for currently configured Reduced Redundancy storage class.
 	RRSCParity int `json:"rrSCParity"`
+
+	// Per pool information
+	TotalSets    []int `json:"totalSets"`
+	DrivesPerSet []int `json:"totalDrivesPerSet"`
 }
 
 // ServerProperties holds server information
@@ -498,18 +484,22 @@ type SetInfo struct {
 	Member     map[int]*SetDiskInfo `json:"member"`
 }
 
+type ErasurePoolEngine string
+
 type PoolInfo struct {
-	Index        int              `json:"poolIndex"`
-	Status       string           `json:"status"`
-	DrivesPerSet int              `json:"drivesPerSet"`
-	Parity       int              `json:"parity"`
-	Sets         map[int]*SetInfo `json:"setsInfo"`
-	UsedSpace    uint64           `json:"usedSpace"`
-	TotalSpace   uint64           `json:"totalSpace"`
+	Index             int               `json:"poolIndex"`
+	Status            string            `json:"status"`
+	DrivesPerSet      int               `json:"drivesPerSet"`
+	Parity            int               `json:"parity"`
+	Sets              map[int]*SetInfo  `json:"setsInfo"`
+	UsedSpace         uint64            `json:"usedSpace"`
+	TotalSpace        uint64            `json:"totalSpace"`
+	ErasurePoolEngine ErasurePoolEngine `json:"poolEngine"`
 }
 
 type OSSClusterInfo struct {
-	Pools map[int]*PoolInfo `json:"poolsInfo"`
+	Config map[string]string `json:"config"`
+	Pools  map[int]*PoolInfo `json:"poolsInfo"`
 }
 
 // GetClusterInfo - returns minio cluster Info

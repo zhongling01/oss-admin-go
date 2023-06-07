@@ -24,6 +24,9 @@ func TestAdminClient_GetClusterInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+	for key, value := range info.Config {
+		t.Log(fmt.Sprintf("%s: %s", key, value))
+	}
 	for _, pool := range info.Pools {
 		t.Log(fmt.Sprintf("%+v", pool))
 	}
@@ -38,9 +41,7 @@ func TestAdminClient_GetClusterInfo(t *testing.T) {
 			for _, member := range set.Member {
 				t.Log(fmt.Sprintf("%s", member.Endpoint))
 			}
-
 		}
-
 	}
 }
 
