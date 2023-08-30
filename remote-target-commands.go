@@ -95,7 +95,7 @@ type BucketTarget struct {
 	API                 string        `json:"api,omitempty"`
 	Arn                 string        `json:"arn,omitempty"`
 	Type                ServiceType   `json:"type"`
-	Region              string        `json:"omitempty"`
+	Region              string        `json:"region,omitempty"`
 	BandwidthLimit      int64         `json:"bandwidthlimit,omitempty"`
 	ReplicationSync     bool          `json:"replicationSync"`
 	StorageClass        string        `json:"storageclass,omitempty"`
@@ -106,6 +106,8 @@ type BucketTarget struct {
 	TotalDowntime       time.Duration `json:"totalDowntime"`
 	LastOnline          time.Time     `json:"lastOnline"`
 	Online              bool          `json:"isOnline"`
+	Latency             LatencyStat   `json:"latency"`
+	DeploymentID        string        `json:"deploymentID,omitempty"`
 }
 
 // Clone returns shallow clone of BucketTarget without secret key in credentials
@@ -131,6 +133,8 @@ func (t *BucketTarget) Clone() BucketTarget {
 		TotalDowntime:       t.TotalDowntime,
 		LastOnline:          t.LastOnline,
 		Online:              t.Online,
+		Latency:             t.Latency,
+		DeploymentID:        t.DeploymentID,
 	}
 }
 
