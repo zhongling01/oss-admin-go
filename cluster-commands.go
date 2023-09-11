@@ -214,6 +214,8 @@ const (
 	ForceDeleteBucketBktOp BktOp = "force-delete-bucket"
 	// purge bucket
 	PurgeDeletedBucketOp BktOp = "purge-deleted-bucket"
+	// recycle bucket
+	RecycleBucketBktop BktOp = "recycle-bucket"
 )
 
 // SRPeerBucketOps - tells peers to create bucket and setup replication.
@@ -223,7 +225,7 @@ func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op B
 	v.Add("operation", string(op))
 
 	// For make-bucket, bucket options may be sent via `opts`
-	if op == MakeWithVersioningBktOp || op == DeleteBucketBktOp {
+	if op == MakeWithVersioningBktOp || op == DeleteBucketBktOp || op == RecycleBucketBktop {
 		for k, val := range opts {
 			v.Add(k, val)
 		}
