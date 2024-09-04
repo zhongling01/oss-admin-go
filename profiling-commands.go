@@ -192,7 +192,9 @@ func (adm *AdminClient) StartProfile(ctx context.Context, profiler ProfilerType)
 }
 
 type ListProfileResponse struct {
-	ProfileFiles []ProfileFile `json:"ProfileFile"`
+	ProfileFiles   []ProfileFile `json:"ProfileFile"`
+	LastTaskError  string        `json:"LastTaskError"`
+	IsStillRunning bool          `json:"IsStillRunning"`
 }
 
 type ProfileFile struct {
