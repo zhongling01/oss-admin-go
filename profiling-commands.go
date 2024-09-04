@@ -142,3 +142,122 @@ func (adm *AdminClient) Profile(ctx context.Context, profiler ProfilerType, dura
 	}
 	return resp.Body, nil
 }
+
+/* trinet */
+func (adm *AdminClient) StopProfile(ctx context.Context) error {
+	v := url.Values{}
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPost, requestData{
+			relPath:     adminAPIPrefix + "/profile/stop",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+type StartProfileResponse struct {
+	Result string `json:"result"`
+}
+
+func (adm *AdminClient) StartProfile(ctx context.Context, profiler ProfilerType) (StartProfileResponse, error) {
+	v := url.Values{}
+	v.Set("profilerType", string(profiler))
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPost, requestData{
+			relPath:     adminAPIPrefix + "/profile/start",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return StartProfileResponse{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return StartProfileResponse{}, httpRespToErrorResponse(resp)
+	}
+
+	var startResults StartProfileResponse
+	startResults.Result = "StartProfile success"
+
+	return startResults, nil
+}
+
+type ListProfileResponse struct {
+	ProfileFiles   []ProfileFile `json:"ProfileFile"`
+	LastTaskError  string        `json:"LastTaskError"`
+	IsStillRunning bool          `json:"IsStillRunning"`
+}
+
+type ProfileFile struct {
+	FileName string `json:"fileName"`
+}
+
+func (adm *AdminClient) ListProfile(ctx context.Context) (ListProfileResponse, error) {
+	v := url.Values{}
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet, requestData{
+			relPath:     adminAPIPrefix + "/profile/list",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return ListProfileResponse{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ListProfileResponse{}, httpRespToErrorResponse(resp)
+	}
+
+	if resp.Body == nil {
+		return ListProfileResponse{}, errors.New("body is nil")
+	}
+
+	jsonResult, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ListProfileResponse{}, err
+	}
+
+	var ListResults ListProfileResponse
+	err = json.Unmarshal(jsonResult, &ListResults)
+	if err != nil {
+		return ListProfileResponse{}, err
+	}
+
+	return ListResults, nil
+}
+
+func (adm *AdminClient) GetProfile(ctx context.Context, profileName string) (io.ReadCloser, error) {
+	v := url.Values{}
+	v.Set("profileName", profileName)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet, requestData{
+			relPath:     adminAPIPrefix + "/profile/get",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	if resp.Body == nil {
+		return nil, errors.New("body is nil")
+	}
+	return resp.Body, nil
+}
+
+/* trinet */
