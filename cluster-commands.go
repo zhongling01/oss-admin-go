@@ -41,6 +41,7 @@ type PeerSite struct {
 	Endpoint  string `json:"endpoints"`
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
+	SyncState string `json:"syncState"`
 }
 
 // Meaningful values for ReplicateAddStatus.Status
