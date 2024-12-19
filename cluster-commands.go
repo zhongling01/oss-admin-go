@@ -42,6 +42,9 @@ type PeerSite struct {
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
 	SyncState string `json:"syncState"`
+	/*trinet*/
+	BandwidthLimit int64 `json:"bandwidthlimit"`
+	/*trinet*/
 }
 
 // Meaningful values for ReplicateAddStatus.Status
@@ -154,6 +157,9 @@ type PeerInfo struct {
 	// change.
 	DeploymentID string     `json:"deploymentID"`
 	SyncState    SyncStatus `json:"sync"` // whether to enable| disable synchronous replication
+	/*trinet*/
+	BandwidthLimit int64 `json:"bandwidthlimit"`
+	/*trinet*/
 }
 
 type SyncStatus string // change in sync state
