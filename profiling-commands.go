@@ -260,4 +260,28 @@ func (adm *AdminClient) GetProfile(ctx context.Context, profileName string) (io.
 	return resp.Body, nil
 }
 
+func (adm *AdminClient) SetPrometheusLimits(ctx context.Context, limitNum string) (io.ReadCloser, error) {
+	v := url.Values{}
+	v.Set("limitNum", limitNum)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPost, requestData{
+			relPath:     adminAPIPrefix + "/metric/config",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	if resp.Body == nil {
+		return nil, errors.New("body is nil")
+	}
+	return resp.Body, nil
+}
+
 /* trinet */
