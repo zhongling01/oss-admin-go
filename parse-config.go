@@ -53,6 +53,9 @@ const (
 	SubnetSubSys         = "subnet"
 	CallhomeSubSys       = "callhome"
 	BatchSubSys          = "batch"
+	/*trinet*/
+	BandwidthSubSys = "bandwidth"
+	/*trinet*/
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -93,6 +96,9 @@ var SubSystems = set.CreateStringSet(
 	SubnetSubSys,
 	CallhomeSubSys,
 	BatchSubSys,
+	/*trinet*/
+	BandwidthSubSys,
+	/*trinet*/
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
