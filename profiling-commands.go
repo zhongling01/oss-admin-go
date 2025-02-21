@@ -284,4 +284,38 @@ func (adm *AdminClient) SetPrometheusLimits(ctx context.Context, limitNum string
 	return resp.Body, nil
 }
 
+func (adm *AdminClient) GetPrometheusLimits(ctx context.Context) (limitNum int, err error) {
+	v := url.Values{}
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet, requestData{
+			relPath:     adminAPIPrefix + "/metric/config",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, httpRespToErrorResponse(resp)
+	}
+
+	if resp.Body == nil {
+		return 0, errors.New("body is nil")
+	}
+	jsonResult, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	var limitNumResults map[string]int
+	err = json.Unmarshal(jsonResult, &limitNumResults)
+	if err != nil {
+		return 0, err
+	}
+
+	return limitNumResults["limitNum"], nil
+}
+
 /* trinet */
