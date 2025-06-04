@@ -49,6 +49,17 @@ func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
 	return adm.serviceCallAction(ctx, ServiceActionUnfreeze)
 }
 
+/*trinet*/
+func (adm *AdminClient) ScannerStop(ctx context.Context) error {
+	return adm.serviceCallAction(ctx, ScanActionStop)
+}
+
+func (adm *AdminClient) ScannerStart(ctx context.Context) error {
+	return adm.serviceCallAction(ctx, ScanActionStart)
+}
+
+/*trinet*/
+
 // ServiceAction - type to restrict service-action values
 type ServiceAction string
 
@@ -61,6 +72,11 @@ const (
 	ServiceActionFreeze = "freeze"
 	// ServiceActionUnfreeze represents unfreeze a previous freeze action
 	ServiceActionUnfreeze = "unfreeze"
+
+	/*trinet*/
+	ScanActionStop  = "stopScan"
+	ScanActionStart = "startScan"
+	/*trinet*/
 )
 
 // serviceCallAction - call service restart/update/stop API.
