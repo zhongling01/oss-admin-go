@@ -22,6 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -56,6 +57,41 @@ func (adm *AdminClient) ScannerStop(ctx context.Context) error {
 
 func (adm *AdminClient) ScannerStart(ctx context.Context) error {
 	return adm.serviceCallAction(ctx, ScanActionStart)
+}
+
+func (adm *AdminClient) ScannerStatus(ctx context.Context) (interface{}, error) {
+	// Execute GET on /minio/admin/v3/config to get config of a setup.
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{relPath: adminAPIPrefix + "/scan-status"})
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var scanStatus struct {
+		Paused         bool      `json:"paused"`
+		PausedByUser   bool      `json:"pausedByUser"`
+		CurrentPath    string    `json:"currentPath"`
+		LastUpdated    time.Time `json:"lastUpdated"`
+		UserRequestAt  time.Time `json:"userRequestAt"`
+		NextAutoAction string    `json:"nextAutoAction"`
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return scanStatus, err
+	}
+
+	err = json.Unmarshal(b, &scanStatus)
+	if err != nil {
+		return scanStatus, err
+	}
+
+	return scanStatus, nil
 }
 
 /*trinet*/
