@@ -36,11 +36,21 @@ const SiteReplAPIVersion = "1"
 
 // PeerSite - represents a cluster/site to be added to the set of replicated
 // sites.
+
+type SyncInfo struct {
+	SyncState      SyncStatus `json:"syncState"`
+	BandwidthLimit int64  `json:"bandwidthLimit"`
+}
+
 type PeerSite struct {
 	Name      string `json:"name"`
 	Endpoint  string `json:"endpoints"`
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
+	SyncState string `json:"syncState"`
+	/*trinet*/
+	SyncStateMap   map[string]SyncInfo `json:"syncStateMap"`
+	/*trinet*/
 }
 
 // Meaningful values for ReplicateAddStatus.Status
@@ -153,6 +163,9 @@ type PeerInfo struct {
 	// change.
 	DeploymentID string     `json:"deploymentID"`
 	SyncState    SyncStatus `json:"sync"` // whether to enable| disable synchronous replication
+	/*trinet*/
+	SyncStateMap   map[string]SyncInfo `json:"syncStateMap"`
+	/*trinet*/
 }
 
 type SyncStatus string // change in sync state
