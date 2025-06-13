@@ -20,8 +20,11 @@
 package madmin
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -561,7 +564,7 @@ type BucketInfoForVcs struct {
 func (adm *AdminClient) GetBucketInfo(ctx context.Context) (map[string]BucketInfoForVcs, error) {
 	bucketInfo := make(map[string]BucketInfoForVcs, 0)
 
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/bucketinfo"})
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{customHeaders: http.Header{"Accept-Encoding": {"gzip"}}, relPath: adminAPIPrefix + "/bucketinfo"})
 	defer closeResponse(resp)
 	if err != nil {
 		return bucketInfo, err
@@ -570,6 +573,21 @@ func (adm *AdminClient) GetBucketInfo(ctx context.Context) (map[string]BucketInf
 	// Check response http status code
 	if resp.StatusCode != http.StatusOK {
 		return bucketInfo, httpRespToErrorResponse(resp)
+	}
+
+	// 检查响应是否是 gzip 压缩的
+	var reader io.Reader = resp.Body
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		gzReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return bucketInfo, fmt.Errorf("creating gzip reader failed: %v", err)
+		}
+		defer gzReader.Close()
+		reader = gzReader
+
+		if err = json.NewDecoder(reader).Decode(&bucketInfo); err != nil {
+			return bucketInfo, err
+		}
 	}
 
 	// Unmarshal the server's json response
