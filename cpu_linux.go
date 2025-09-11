@@ -1,7 +1,8 @@
 //go:build linux
 // +build linux
 
-// Copyright (c) 2015-2022 MinIO, Inc.
+//
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,37 +23,35 @@
 package madmin
 
 import (
-	"github.com/prometheus/procfs/sysfs"
+	"bytes"
+	"os"
+	"path/filepath"
+	"strconv"
 )
 
-func getCPUFreqStats() ([]CPUFreqStats, error) {
-	fs, err := sysfs.NewFS("/sys")
-	if err != nil {
-		return nil, err
+func getCPUFreqStats() (stats []CPUFreqStats, err error) {
+	// Attempt to read CPU stats for governor on CPU0
+	// which is enough indicating atleast the system
+	// has one CPU.
+	cpuName := "cpu" + strconv.Itoa(0)
+
+	governorPath := filepath.Join(
+		"/sys/devices/system/cpu",
+		cpuName,
+		"cpufreq",
+		"scaling_governor",
+	)
+
+	content, err1 := os.ReadFile(governorPath)
+	if err1 != nil {
+		err = err1
+		return
 	}
 
-	stats, err := fs.SystemCpufreq()
-	if err != nil {
-		return nil, err
-	}
+	stats = append(stats, CPUFreqStats{
+		Name:     cpuName,
+		Governor: string(bytes.TrimSpace(content)),
+	})
 
-	out := make([]CPUFreqStats, 0, len(stats))
-	for _, stat := range stats {
-		out = append(out, CPUFreqStats{
-			Name:                     stat.Name,
-			CpuinfoCurrentFrequency:  stat.CpuinfoCurrentFrequency,
-			CpuinfoMinimumFrequency:  stat.CpuinfoMinimumFrequency,
-			CpuinfoMaximumFrequency:  stat.CpuinfoMaximumFrequency,
-			CpuinfoTransitionLatency: stat.CpuinfoTransitionLatency,
-			ScalingCurrentFrequency:  stat.ScalingCurrentFrequency,
-			ScalingMinimumFrequency:  stat.ScalingMinimumFrequency,
-			ScalingMaximumFrequency:  stat.ScalingMaximumFrequency,
-			AvailableGovernors:       stat.AvailableGovernors,
-			Driver:                   stat.Driver,
-			Governor:                 stat.Governor,
-			RelatedCpus:              stat.RelatedCpus,
-			SetSpeed:                 stat.SetSpeed,
-		})
-	}
-	return out, nil
+	return stats, nil
 }

@@ -1,4 +1,6 @@
-//
+//go:build ignore
+// +build ignore
+
 // Copyright (c) 2015-2022 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
@@ -17,14 +19,29 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-package madmin
+package main
 
-import "time"
+import (
+	"context"
+	"log"
 
-// Credentials holds access and secret keys.
-type Credentials struct {
-	AccessKey    string    `xml:"AccessKeyId" json:"accessKey,omitempty"`
-	SecretKey    string    `xml:"SecretAccessKey" json:"secretKey,omitempty"`
-	SessionToken string    `xml:"SessionToken" json:"sessionToken,omitempty"`
-	Expiration   time.Time `xml:"Expiration" json:"expiration,omitempty"`
+	"github.com/minio/madmin-go/v4"
+)
+
+func main() {
+	// Note: YOUR-ACCESSKEYID, YOUR-SECRETACCESSKEY and my-bucketname are
+	// dummy values, please replace them with original values.
+
+	// API requests are secure (HTTPS) if secure=true and insecure (HTTPS) otherwise.
+	// New returns an MinIO Admin client object.
+	madmClnt, err := madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	st, err := madmClnt.StorageInfo(context.Background())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("%+v\n", st)
 }

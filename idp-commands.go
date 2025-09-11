@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trinet2005/oss-go-sdk/pkg/set"
+	"github.com/zhongling01/oss-go-sdk/pkg/set"
 )
 
 // AddOrUpdateIDPConfig - creates a new or updates an existing IDP
@@ -123,7 +123,7 @@ var ValidIDPConfigTypes = set.CreateStringSet(OpenidIDPCfg, LDAPIDPCfg)
 // GetIDPConfig - fetch IDP config from server.
 func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName string) (c IDPConfig, err error) {
 	if !ValidIDPConfigTypes.Contains(cfgType) {
-		return c, fmt.Errorf("Invalid config type: %s", cfgType)
+		return c, fmt.Errorf("invalid config type: %s", cfgType)
 	}
 
 	if cfgName == "" {
@@ -174,6 +174,53 @@ func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName strin
 	return c, err
 }
 
+type CheckIDPConfigResp struct {
+	ErrType string `json:"errType"`
+	ErrMsg  string `json:"errMsg"`
+}
+
+// IDP validity check error types
+const (
+	IDPErrNone       = "none"
+	IDPErrDisabled   = "disabled"
+	IDPErrConnection = "connection"
+	IDPErrInvalid    = "invalid"
+)
+
+func (adm *AdminClient) CheckIDPConfig(ctx context.Context, cfgType, cfgName string) (CheckIDPConfigResp, error) {
+	// Add OpenID support in the future.
+	if cfgType != LDAPIDPCfg {
+		return CheckIDPConfigResp{}, fmt.Errorf("invalid config type: %s", cfgType)
+	}
+
+	if cfgName == "" {
+		cfgName = Default
+	}
+
+	reqData := requestData{
+		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName, "check"}, "/"),
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return CheckIDPConfigResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return CheckIDPConfigResp{}, httpRespToErrorResponse(resp)
+	}
+
+	content, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return CheckIDPConfigResp{}, err
+	}
+
+	var r CheckIDPConfigResp
+	err = json.Unmarshal(content, &r)
+	return r, err
+}
+
 // IDPListItem - represents an item in the List IDPs call.
 type IDPListItem struct {
 	Type    string `json:"type"`
@@ -185,7 +232,7 @@ type IDPListItem struct {
 // ListIDPConfig - list IDP configuration on the server.
 func (adm *AdminClient) ListIDPConfig(ctx context.Context, cfgType string) ([]IDPListItem, error) {
 	if !ValidIDPConfigTypes.Contains(cfgType) {
-		return nil, fmt.Errorf("Invalid config type: %s", cfgType)
+		return nil, fmt.Errorf("invalid config type: %s", cfgType)
 	}
 
 	reqData := requestData{
@@ -285,8 +332,9 @@ type PolicyEntitiesResult struct {
 
 // UserPolicyEntities - user -> policies mapping
 type UserPolicyEntities struct {
-	User     string   `json:"user"`
-	Policies []string `json:"policies"`
+	User             string                `json:"user"`
+	Policies         []string              `json:"policies"`
+	MemberOfMappings []GroupPolicyEntities `json:"memberOfMappings,omitempty"`
 }
 
 // GroupPolicyEntities - group -> policies mapping
@@ -435,4 +483,57 @@ func (adm *AdminClient) attachOrDetachPolicyLDAP(ctx context.Context, isAttach b
 	r := PolicyAssociationResp{}
 	err = json.Unmarshal(content, &r)
 	return r, err
+}
+
+// ListAccessKeysLDAPResp is the response body of the list service accounts call
+type ListAccessKeysLDAPResp ListAccessKeysResp
+
+// ListAccessKeysLDAPBulk - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+	return adm.ListAccessKeysLDAPBulkWithOpts(ctx, users, ListAccessKeysOpts{ListType: listType, All: all})
+}
+
+// ListAccessKeysLDAPBulkWithOpts - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysLDAPResp, error) {
+	if len(users) > 0 && opts.All {
+		return nil, errors.New("either specify userDNs or all, not both")
+	}
+
+	queryValues := url.Values{}
+	if opts.ListType == "" {
+		opts.ListType = AccessKeyListAll
+	}
+
+	queryValues.Set("listType", opts.ListType)
+	queryValues["userDNs"] = users
+	if opts.All {
+		queryValues.Set("all", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v4/idp/ldap/list-access-keys-bulk
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	listResp := make(map[string]ListAccessKeysLDAPResp)
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return nil, err
+	}
+	return listResp, nil
 }

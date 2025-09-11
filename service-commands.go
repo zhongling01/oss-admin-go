@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,41 +22,47 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
 // ServiceRestart - restarts the MinIO cluster
 func (adm *AdminClient) ServiceRestart(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionRestart)
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionRestart})
+	return err
 }
 
 // ServiceStop - stops the MinIO cluster
 func (adm *AdminClient) ServiceStop(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionStop)
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionStop})
+	return err
 }
 
 // ServiceFreeze - freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceFreeze(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionFreeze)
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionFreeze})
+	return err
 }
 
 // ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionUnfreeze)
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionUnfreeze})
+	return err
 }
 
 /*trinet*/
 func (adm *AdminClient) ScannerStop(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ScanActionStop)
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ScanActionStop})
+	return err
 }
 
 func (adm *AdminClient) ScannerStart(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ScanActionStart)
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ScanActionStart})
+	return err
 }
 
 func (adm *AdminClient) ScannerStatus(ctx context.Context) (interface{}, error) {
@@ -115,10 +121,39 @@ const (
 	/*trinet*/
 )
 
-// serviceCallAction - call service restart/update/stop API.
-func (adm *AdminClient) serviceCallAction(ctx context.Context, action ServiceAction) error {
+// ServiceActionOpts specifies the action that the service is requested
+// to take, dryRun indicates if the action is a no-op, force indicates
+// that server must make best effort to restart the process.
+type ServiceActionOpts struct {
+	Action ServiceAction
+	DryRun bool
+}
+
+// ServiceActionPeerResult service peer result
+type ServiceActionPeerResult struct {
+	Host          string                 `json:"host"`
+	Err           string                 `json:"err,omitempty"`
+	WaitingDrives map[string]DiskMetrics `json:"waitingDrives,omitempty"`
+}
+
+// ServiceActionResult service action result
+type ServiceActionResult struct {
+	Action  ServiceAction             `json:"action"`
+	DryRun  bool                      `json:"dryRun"`
+	Results []ServiceActionPeerResult `json:"results,omitempty"`
+}
+
+// ServiceAction - specify the type of service action that we are requesting the server to perform
+func (adm *AdminClient) ServiceAction(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
+	return adm.serviceCallAction(ctx, opts)
+}
+
+// serviceCallAction - call service restart/stop/freeze/unfreeze
+func (adm *AdminClient) serviceCallAction(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
 	queryValues := url.Values{}
-	queryValues.Set("action", string(action))
+	queryValues.Set("action", string(opts.Action))
+	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
+	queryValues.Set("type", "2")
 
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,
@@ -129,14 +164,20 @@ func (adm *AdminClient) serviceCallAction(ctx context.Context, action ServiceAct
 	)
 	defer closeResponse(resp)
 	if err != nil {
-		return err
+		return ServiceActionResult{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
+		return ServiceActionResult{}, httpRespToErrorResponse(resp)
 	}
 
-	return nil
+	srvRes := ServiceActionResult{}
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&srvRes); err != nil {
+		return ServiceActionResult{}, err
+	}
+
+	return srvRes, nil
 }
 
 // ServiceTraceInfo holds http trace
@@ -164,8 +205,12 @@ type ServiceTraceOpts struct {
 	Bootstrap         bool
 	FTP               bool
 	ILM               bool
-	OnlyErrors        bool
-	Threshold         time.Duration
+	KMS               bool
+	Formatting        bool
+
+	OnlyErrors    bool
+	Threshold     time.Duration
+	ThresholdTTFB time.Duration
 }
 
 // TraceTypes returns the enabled traces as a bitfield value.
@@ -178,21 +223,17 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Scanner, TraceScanner)
 	tt.SetIf(t.Decommission, TraceDecommission)
 	tt.SetIf(t.Healing, TraceHealing)
-	if t.BatchAll {
-		tt.SetIf(true, TraceBatchReplication)
-		tt.SetIf(true, TraceBatchKeyRotation)
-		tt.SetIf(true, TraceBatchExpire)
-	} else {
-		tt.SetIf(t.BatchReplication, TraceBatchReplication)
-		tt.SetIf(t.BatchKeyRotation, TraceBatchKeyRotation)
-		tt.SetIf(t.BatchExpire, TraceBatchExpire)
-	}
+	tt.SetIf(t.BatchAll || t.BatchReplication, TraceBatchReplication)
+	tt.SetIf(t.BatchAll || t.BatchKeyRotation, TraceBatchKeyRotation)
+	tt.SetIf(t.BatchAll || t.BatchExpire, TraceBatchExpire)
 
 	tt.SetIf(t.Rebalance, TraceRebalance)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
 	tt.SetIf(t.FTP, TraceFTP)
 	tt.SetIf(t.ILM, TraceILM)
+	tt.SetIf(t.KMS, TraceKMS)
+	tt.SetIf(t.Formatting, TraceFormatting)
 
 	return tt
 }
@@ -201,6 +242,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("err", strconv.FormatBool(t.OnlyErrors))
 	u.Set("threshold", t.Threshold.String())
+	u.Set("threshold-ttfb", t.ThresholdTTFB.String())
 
 	u.Set("s3", strconv.FormatBool(t.S3))
 	u.Set("internal", strconv.FormatBool(t.Internal))
@@ -209,19 +251,16 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("scanner", strconv.FormatBool(t.Scanner))
 	u.Set("decommission", strconv.FormatBool(t.Decommission))
 	u.Set("healing", strconv.FormatBool(t.Healing))
-	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
-	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchKeyRotation))
-	u.Set("batch-expire", strconv.FormatBool(t.BatchExpire))
-	if t.BatchAll {
-		u.Set("batch-replication", "true")
-		u.Set("batch-keyrotation", "true")
-		u.Set("batch-expire", "true")
-	}
+	u.Set("batch-replication", strconv.FormatBool(t.BatchAll || t.BatchReplication))
+	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchAll || t.BatchKeyRotation))
+	u.Set("batch-expire", strconv.FormatBool(t.BatchAll || t.BatchExpire))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
 	u.Set("ilm", strconv.FormatBool(t.ILM))
+	u.Set("kms", strconv.FormatBool(t.KMS))
+	u.Set("formatting", strconv.FormatBool(t.Formatting))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -242,6 +281,8 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Bootstrap = r.Form.Get("bootstrap") == "true"
 	t.FTP = r.Form.Get("ftp") == "true"
 	t.ILM = r.Form.Get("ilm") == "true"
+	t.KMS = r.Form.Get("kms") == "true"
+	t.Formatting = r.Form.Get("formatting") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
@@ -250,7 +291,71 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 		}
 		t.Threshold = d
 	}
+
+	if thTTFB := r.Form.Get("threshold-ttfb"); thTTFB != "" {
+		d, err := time.ParseDuration(thTTFB)
+		if err != nil {
+			return err
+		}
+		t.ThresholdTTFB = d
+	}
+
 	return nil
+}
+
+// ServiceTraceIter - listen on http trace notifications via iter.Seq
+func (adm AdminClient) ServiceTraceIter(ctx context.Context, opts ServiceTraceOpts) iter.Seq[ServiceTraceInfo] {
+	return func(yield func(ServiceTraceInfo) bool) {
+		// if context is already canceled, skip yield
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		for {
+			urlValues := make(url.Values)
+			opts.AddParams(urlValues)
+
+			reqData := requestData{
+				relPath:     adminAPIPrefix + "/trace",
+				queryValues: urlValues,
+			}
+
+			// Execute GET to call trace handler
+			resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+			if err != nil {
+				yield(ServiceTraceInfo{Err: err})
+				return
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				closeResponse(resp)
+				yield(ServiceTraceInfo{Err: httpRespToErrorResponse(resp)})
+				return
+			}
+
+			dec := json.NewDecoder(resp.Body)
+			for {
+				var info TraceInfo
+				if err = dec.Decode(&info); err != nil {
+					closeResponse(resp)
+					yield(ServiceTraceInfo{Err: err})
+					break
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				if !yield(ServiceTraceInfo{Trace: info}) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // ServiceTrace - listen on http trace notifications.
@@ -282,45 +387,17 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 
 			dec := json.NewDecoder(resp.Body)
 			for {
-				var info traceInfoLegacy
+				var info TraceInfo
 				if err = dec.Decode(&info); err != nil {
 					closeResponse(resp)
 					traceInfoCh <- ServiceTraceInfo{Err: err}
 					break
 				}
-				// Convert if legacy...
-				if info.TraceType == TraceType(0) {
-					if strings.HasPrefix(info.FuncName, "s3.") {
-						info.TraceType = TraceS3
-					} else {
-						info.TraceType = TraceInternal
-					}
-					info.HTTP = &TraceHTTPStats{}
-					if info.ReqInfo != nil {
-						info.Path = info.ReqInfo.Path
-						info.HTTP.ReqInfo = *info.ReqInfo
-					}
-					if info.RespInfo != nil {
-						info.HTTP.RespInfo = *info.RespInfo
-					}
-					if info.CallStats != nil {
-						info.Duration = info.CallStats.Latency
-						info.HTTP.CallStats = *info.CallStats
-					}
-				}
-				if info.TraceType == TraceOS && info.OSStats != nil {
-					info.Path = info.OSStats.Path
-					info.Duration = info.OSStats.Duration
-				}
-				if info.TraceType == TraceStorage && info.StorageStats != nil {
-					info.Path = info.StorageStats.Path
-					info.Duration = info.StorageStats.Duration
-				}
 				select {
 				case <-ctx.Done():
 					closeResponse(resp)
 					return
-				case traceInfoCh <- ServiceTraceInfo{Trace: info.TraceInfo}:
+				case traceInfoCh <- ServiceTraceInfo{Trace: info}:
 				}
 			}
 		}

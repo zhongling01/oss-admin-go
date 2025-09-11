@@ -1,8 +1,7 @@
 //go:build linux
 // +build linux
 
-//
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -29,7 +28,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,7 +36,7 @@ import (
 )
 
 // DO NOT EDIT following constants are chosen defaults for any kernel
-// after 3.x, please open a GitHub issue https://github.com/minio/madmin-go/v2/issues
+// after 3.x, please open a GitHub issue https://github.com/minio/madmin-go/issues
 // and discuss first if you wish to change this.
 const (
 	// Default string for looking for kernel memory param.
@@ -168,7 +166,7 @@ func GetMemoryLimit(pid int) (limit uint64, err error) {
 		// might not be installed. We fallback to using the the sysfs
 		// path instead to lookup memory limits.
 		var b []byte
-		b, err = ioutil.ReadFile(getMemoryLimitFilePath(path))
+		b, err = os.ReadFile(getMemoryLimitFilePath(path))
 		if err != nil {
 			return 0, err
 		}
