@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -30,7 +30,7 @@ import (
 
 // InfoCannedPolicy - expand canned policy into JSON structure.
 //
-// To be DEPRECATED in favor of the implementation in InfoCannedPolicyV2
+// Deprecated: Use InfoCannedPolicyV2 instead.
 func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) ([]byte, error) {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
@@ -52,7 +52,7 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 // PolicyInfo contains information on a policy.
@@ -101,7 +101,7 @@ func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName strin
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 
 // AddCannedPolicy - adds a policy for a canned.
 func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, policy []byte) error {
-	if policy == nil {
+	if len(policy) == 0 {
 		return ErrInvalidArgument("policy input cannot be empty")
 	}
 
@@ -198,6 +198,11 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 }
 
 // SetPolicy - sets the policy for a user or a group.
+//
+// Deprecated: Use AttachPolicy/DetachPolicy to update builtin user policies
+// instead. Use AttachPolicyLDAP/DetachPolicyLDAP to update LDAP user policies.
+// This function and the corresponding server API will be removed in future
+// releases.
 func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName string, isGroup bool) error {
 	queryValues := url.Values{}
 	queryValues.Set("policyName", policyName)
@@ -264,8 +269,8 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 
 	// Older minio does not send a response, so we handle that case.
 
-	switch {
-	case resp.StatusCode == http.StatusOK:
+	switch resp.StatusCode {
+	case http.StatusOK:
 		// Newer/current minio sends a result.
 		content, err := DecryptData(adm.getSecretKey(), resp.Body)
 		if err != nil {
@@ -276,7 +281,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 		err = json.Unmarshal(content, &rsp)
 		return rsp, err
 
-	case resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent:
+	case http.StatusCreated, http.StatusNoContent:
 		// Older minio - no result sent. TODO(aditya): Remove this case after
 		// newer minio is released.
 		return PolicyAssociationResp{}, nil

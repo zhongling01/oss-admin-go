@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -27,8 +27,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
+
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
 
 // BackendType - represents different backend types.
 type BackendType int
@@ -208,11 +213,22 @@ type DataUsageInfo struct {
 
 	// Deprecated kept here for backward compatibility reasons.
 	BucketSizes map[string]uint64 `json:"bucketsSizes"`
+
+	// Server capacity related data
+	TotalCapacity     uint64 `json:"capacity"`
+	TotalFreeCapacity uint64 `json:"freeCapacity"`
+	TotalUsedCapacity uint64 `json:"usedCapacity"`
 }
 
 // DataUsageInfo - returns data usage of the current object API
 func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error) {
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/datausageinfo"})
+	values := make(url.Values)
+	values.Set("capacity", "true") // We can make this configurable in future but for now its fine.
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
+		relPath:     adminAPIPrefix + "/datausageinfo",
+		queryValues: values,
+	})
 	defer closeResponse(resp)
 	if err != nil {
 		return DataUsageInfo{}, err
@@ -360,6 +376,8 @@ type Logger map[string]Status
 // TargetIDStatus containsid and status
 type TargetIDStatus map[string]Status
 
+//msgp:replace backendType with:string
+
 // backendType - indicates the type of backend storage
 type backendType string
 
@@ -392,21 +410,44 @@ type ErasureBackend struct {
 
 // ServerProperties holds server information
 type ServerProperties struct {
-	State          string            `json:"state,omitempty"`
-	Endpoint       string            `json:"endpoint,omitempty"`
-	Scheme         string            `json:"scheme,omitempty"`
-	Uptime         int64             `json:"uptime,omitempty"`
-	Version        string            `json:"version,omitempty"`
-	CommitID       string            `json:"commitID,omitempty"`
-	Network        map[string]string `json:"network,omitempty"`
-	Disks          []Disk            `json:"drives,omitempty"`
-	PoolNumber     int               `json:"poolNumber,omitempty"`
-	MemStats       MemStats          `json:"mem_stats"`
-	GoMaxProcs     int               `json:"go_max_procs,omitempty"`
-	NumCPU         int               `json:"num_cpu,omitempty"`
-	RuntimeVersion string            `json:"runtime_version,omitempty"`
-	GCStats        *GCStats          `json:"gc_stats,omitempty"`
-	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
+	State               string            `json:"state,omitempty"`
+	Endpoint            string            `json:"endpoint,omitempty"`
+	Scheme              string            `json:"scheme,omitempty"`
+	Uptime              int64             `json:"uptime,omitempty"`
+	Version             string            `json:"version,omitempty"`
+	CommitID            string            `json:"commitID,omitempty"`
+	Network             map[string]string `json:"network,omitempty"`
+	Disks               []Disk            `json:"drives,omitempty"`
+	PoolNumber          int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
+	PoolNumbers         []int             `json:"poolNumbers,omitempty"`
+	MemStats            MemStats          `json:"mem_stats"`
+	GoMaxProcs          int               `json:"go_max_procs,omitempty"`
+	NumCPU              int               `json:"num_cpu,omitempty"`
+	RuntimeVersion      string            `json:"runtime_version,omitempty"`
+	GCStats             *GCStats          `json:"gc_stats,omitempty"`
+	MinioEnvVars        map[string]string `json:"minio_env_vars,omitempty"`
+	Edition             string            `json:"edition"`
+	License             *LicenseInfo      `json:"license,omitempty"`
+	IsLeader            bool              `json:"is_leader"`
+	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
+}
+
+// MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
+type MemStats struct {
+	Alloc      uint64
+	TotalAlloc uint64
+	Mallocs    uint64
+	Frees      uint64
+	HeapAlloc  uint64
+}
+
+// GCStats collect information about recent garbage collections.
+type GCStats struct {
+	LastGC     time.Time       `json:"last_gc"`     // time of last collection
+	NumGC      int64           `json:"num_gc"`      // number of garbage collections
+	PauseTotal time.Duration   `json:"pause_total"` // total pause for all collections
+	Pause      []time.Duration `json:"pause"`       // pause history, most recent first
+	PauseEnd   []time.Time     `json:"pause_end"`   // pause end times history, most recent first
 }
 
 // DiskMetrics has the information about XL Storage APIs
@@ -415,13 +456,38 @@ type ServerProperties struct {
 type DiskMetrics struct {
 	LastMinute map[string]TimedAction `json:"lastMinute,omitempty"`
 	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
-	// Captures all data availability errors such as permission denied, faulty disk and timeout errors.
+
+	// TotalTokens set per drive max concurrent I/O.
+	TotalTokens uint32 `json:"totalTokens,omitempty"`
+	// TotalWaiting the amount of concurrent I/O waiting on disk
+	TotalWaiting uint32 `json:"totalWaiting,omitempty"`
+
+	// Captures all data availability errors such as
+	// permission denied, faulty disk and timeout errors.
 	TotalErrorsAvailability uint64 `json:"totalErrorsAvailability,omitempty"`
 	// Captures all timeout only errors
 	TotalErrorsTimeout uint64 `json:"totalErrorsTimeout,omitempty"`
 
+	// Total writes on disk (could be empty if the feature
+	// is not enabled on the server)
+	TotalWrites uint64 `json:"totalWrites,omitempty"`
+	// Total deletes on disk (could be empty if the feature
+	// is not enabled on the server)
+	TotalDeletes uint64 `json:"totalDeletes,omitempty"`
+
 	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
 	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
+}
+
+// CacheStats drive cache stats
+type CacheStats struct {
+	Capacity   int64 `json:"capacity"`
+	Used       int64 `json:"used"`
+	Hits       int64 `json:"hits"`
+	Misses     int64 `json:"misses"`
+	DelHits    int64 `json:"delHits"`
+	DelMisses  int64 `json:"delMisses"`
+	Collisions int64 `json:"collisions"`
 }
 
 // Disk holds Disk information
@@ -448,6 +514,8 @@ type Disk struct {
 	HealInfo        *HealingDisk `json:"heal_info,omitempty"`
 	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
+	Local           bool         `json:"local,omitempty"`
+	Cache           *CacheStats  `json:"cacheStats,omitempty"`
 
 	// Indexes, will be -1 until assigned a set.
 	PoolIndex int `json:"pool_index"`
@@ -455,13 +523,36 @@ type Disk struct {
 	DiskIndex int `json:"disk_index"`
 }
 
+// ServerInfoOpts ask for additional data from the server
+type ServerInfoOpts struct {
+	Metrics bool
+}
+
+// WithDriveMetrics asks server to return additional metrics per drive
+func WithDriveMetrics(metrics bool) func(*ServerInfoOpts) {
+	return func(opts *ServerInfoOpts) {
+		opts.Metrics = metrics
+	}
+}
+
 // ServerInfo - Connect to a minio server and call Server Admin Info Management API
 // to fetch server's information represented by infoMessage structure
-func (adm *AdminClient) ServerInfo(ctx context.Context) (InfoMessage, error) {
+func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerInfoOpts)) (InfoMessage, error) {
+	srvOpts := &ServerInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	values.Set("metrics", strconv.FormatBool(srvOpts.Metrics))
+
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefix + "/info"},
-	)
+		requestData{
+			relPath:     adminAPIPrefix + "/info",
+			queryValues: values,
+		})
 	defer closeResponse(resp)
 	if err != nil {
 		return InfoMessage{}, err

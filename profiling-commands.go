@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -45,6 +44,7 @@ const (
 	ProfilerTrace      ProfilerType = "trace"      // represents Trace profiler type
 	ProfilerThreads    ProfilerType = "threads"    // represents ThreadCreate profiler type
 	ProfilerGoroutines ProfilerType = "goroutines" // represents Goroutine dumps.
+	ProfilerRuntime    ProfilerType = "runtime"    // Include runtime metrics
 )
 
 // StartProfilingResult holds the result of starting
@@ -55,8 +55,9 @@ type StartProfilingResult struct {
 	Error    string `json:"error"`
 }
 
-// StartProfiling makes an admin call to remotely start profiling on a standalone
-// server or the whole cluster in case of a distributed setup.
+// StartProfiling makes an admin call to remotely start profiling on a
+// standalone server or the whole cluster in case of a distributed setup.
+//
 // Deprecated: use Profile API instead
 func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerType) ([]StartProfilingResult, error) {
 	v := url.Values{}
@@ -76,7 +77,7 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	jsonResult, err := ioutil.ReadAll(resp.Body)
+	jsonResult, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +91,9 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 	return startResults, nil
 }
 
-// DownloadProfilingData makes an admin call to download profiling data of a standalone
-// server or of the whole cluster in case of a distributed setup.
+// DownloadProfilingData makes an admin call to download profiling data of a
+// standalone server or of the whole cluster in case of a distributed setup.
+//
 // Deprecated: use Profile API instead
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
 	path := fmt.Sprintf(adminAPIPrefix + "/profiling/download")

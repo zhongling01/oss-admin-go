@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -21,14 +21,18 @@ package madmin
 
 import (
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
-	"github.com/trinet2005/oss-go-sdk/pkg/s3utils"
+	"github.com/zhongling01/oss-go-sdk/pkg/s3utils"
 )
+
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
 
 // AdminAPIVersion - admin api version used in the request.
 const (
@@ -116,7 +120,46 @@ func closeResponse(resp *http.Response) {
 		// Without this closing connection would disallow re-using
 		// the same connection for future uses.
 		//  - http://stackoverflow.com/a/17961593/4465767
-		io.Copy(ioutil.Discard, resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
+}
+
+// TimedAction contains a number of actions and their accumulated duration in nanoseconds.
+type TimedAction struct {
+	Count   uint64 `json:"count"`
+	AccTime uint64 `json:"acc_time_ns"`
+	MinTime uint64 `json:"min_ns,omitempty"`
+	MaxTime uint64 `json:"max_ns,omitempty"`
+	Bytes   uint64 `json:"bytes,omitempty"`
+}
+
+// Avg returns the average time spent on the action.
+func (t TimedAction) Avg() time.Duration {
+	if t.Count == 0 {
+		return 0
+	}
+	return time.Duration(t.AccTime / t.Count)
+}
+
+// AvgBytes returns the average time spent on the action.
+func (t TimedAction) AvgBytes() uint64 {
+	if t.Count == 0 {
+		return 0
+	}
+	return t.Bytes / t.Count
+}
+
+// Merge other into t.
+func (t *TimedAction) Merge(other TimedAction) {
+	t.Count += other.Count
+	t.AccTime += other.AccTime
+	t.Bytes += other.Bytes
+	if t.Count == 0 {
+		t.MinTime = other.MinTime
+	}
+	if other.Count > 0 {
+		t.MinTime = min(t.MinTime, other.MinTime)
+	}
+	t.MaxTime = max(t.MaxTime, other.MaxTime)
 }

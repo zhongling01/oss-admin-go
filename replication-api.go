@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -221,4 +221,38 @@ func (r RStat) Add(r1 RStat) RStat {
 		Count: r.Count + r1.Count,
 		Bytes: r.Bytes + r1.Bytes,
 	}
+}
+
+// DowntimeInfo captures the downtime information
+type DowntimeInfo struct {
+	Duration StatRecorder `json:"duration"`
+	Count    StatRecorder `json:"count"`
+}
+
+// RecordCount records the value
+func (d *DowntimeInfo) RecordCount(value int64) {
+	d.Count.Record(value)
+}
+
+// RecordDuration records the value
+func (d *DowntimeInfo) RecordDuration(value int64) {
+	d.Duration.Record(value)
+}
+
+// StatRecorder records and calculates the aggregates
+type StatRecorder struct {
+	Total int64 `json:"total"`
+	Avg   int64 `json:"avg"`
+	Max   int64 `json:"max"`
+	count int64 `json:"-"`
+}
+
+// Record will record the value and calculates the aggregates on the fly
+func (s *StatRecorder) Record(value int64) {
+	s.Total += value
+	if s.count == 0 || value > s.Max {
+		s.Max = value
+	}
+	s.count++
+	s.Avg = s.Total / s.count
 }
